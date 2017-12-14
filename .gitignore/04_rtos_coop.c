@@ -4,13 +4,6 @@
 // Student Name:SHIKHAR TANDON
 // TO DO: Add your name on this line.  Do not include your ID number.
 
-// Submit only two .c files in an e-mail to me (not in a compressed file):
-// xx_rtos_coop.c   Single-file with cooperative version of your project
-// xx_rtos_prempt.c Single-file with premptive version of your project
-// (xx is a unique number that will be issued in class)
-// Please do not include .intvecs section in your code submissions
-// Please do not change any function names in this code or thread priorities
-
 //-----------------------------------------------------------------------------
 // Hardware Target
 //-----------------------------------------------------------------------------
@@ -248,6 +241,7 @@ bool createThread(_fn fn, char name[], int priority)
       tcb[i].sp = &stack[i][255];//BASE ADDRESS OF FN
       tcb[i].priority = priority;
       tcb[i].currentPriority = priority;
+      tcb[i].skip = tcb[i].priority;
       while(len < strlen(name))
       {
     	  tcb[i].name[len] = name[len];
@@ -535,49 +529,45 @@ int rtosScheduler()
       task = 0;
     ok = ((tcb[task].state == STATE_READY || tcb[task].state == STATE_UNRUN));
     if(tcb[task].skip != 0)//if skip count is not 0 then decrement it
-    {
-    	tcb[task].skip--;
-    	ok = false;
-    }
-    else if(tcb[task].skip == 0)//if skip count is 0 then restore its skip count and schedule it.
-    {
-    	tcb[task].skip = tcb[task].priority;
-    	ok &=true;
-    }
-
-  }
+        {
+        	tcb[task].skip--;
+        	ok = false;
+        }
+    else if(tcb[i].skip == 0)//if skip count is 0 then restore its skip count and schedule it.
+        {
+        	tcb[task].skip = tcb[task].priority;
+        	ok &=true;
+        }
   //start = WTIMER5_TAV_R;
   return task;
 }
+
 
 // REQUIRED: modify this function to add support for the system timer
 // REQUIRED: in preemptive code, add code to request task switch
 void systickIsr()
 {
 	 int count_task = 0,time;
-	 time = tcb[taskCurrent].ticks;
+	// time = tcb[taskCurrent].ticks;
 	while(count_task < MAX_TASKS)
 	{
 		if(tcb[count_task].state == STATE_DELAYED)//if task is sleeping start decreasing its ticks
 		{
-			 while(time >= 0)
+			 while(tcb[taskCurrent].ticks >= 0)
 			{
-				 if(time == 0)//if sleep duration is complete make it READY
+				 if(tcb[taskCurrent].ticks == 0)//if sleep duration is complete make it READY
 					{
 						tcb[count_task].state = STATE_READY;
 						break;
 					}
-				 time--;
+				 tcb[taskCurrent].ticks--;
+				 break;
 			}
 		}
 
 		count_task++;
 	}
-
-	tcb[taskCurrent].ticks2++;
-	tcb[taskCurrent].ticks2 = (tcb[taskCurrent].ticks2*0.8) /*+ (tcb[taskCurrent].previ*0.7)*/;
-
-
+	
 
 }
 
@@ -1450,7 +1440,7 @@ int main(void)
   // Add other processes
   ok = createThread(lengthyFn, "LengthyFn", 12);
   ok &= createThread(flash4Hz, "Flash4hz", 4);
- ok &= createThread(oneshot, "OneShot", 4);
+  ok &= createThread(oneshot, "OneShot", 4);
   ok &= createThread(readKeys, "ReadKeys", 8);
   ok &= createThread(debounce, "Debounce", 8);
   ok = createThread(important, "Important", 0);
